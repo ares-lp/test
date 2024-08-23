@@ -1,5 +1,82 @@
 package.path = FileMgr.GetMenuRootPath() .. "\\Lua\\?.lua;"
+local script_name = "ChatAssistant.lua"
+local update_url = "https://github.com/ares-lp/test/blob/main/exampleTemp.lua"  -- URL dove si trova la nuova versione dello script
+local lock_file = "ChatAssistant.lock"
 
+-- Funzione per scaricare un file utilizzando Curl
+local function download_file(url, dest)
+    local curl = Curl.Easy()
+    curl:Setopt(eCurlOption.CURLOPT_URL, url)
+    
+    -- Apri il file di destinazione per la scrittura
+    local file = io.open(dest, "wb")
+    if not file then
+        error("Impossibile aprire il file per la scrittura: " .. dest)
+    end
+    
+    -- Imposta la funzione di scrittura personalizzata per Curl
+    curl:Setopt(eCurlOption.CURLOPT_WRITEFUNCTION, function(data)
+        file:write(data)
+        return string.len(data)
+    end)
+
+    -- Esegui l'operazione di download
+    curl:Perform()
+
+    -- Verifica se il download è stato completato con successo
+    local success, response = curl:GetResponse()
+    file:close()
+
+    -- Restituisci true se il download è stato completato con successo
+    return success == eCurlCode.CURLE_OK
+end
+
+-- Funzione per verificare se c'è un nuovo aggiornamento
+local function check_for_updates()
+    -- Se il file di lock esiste, un aggiornamento è già in corso
+    local file = io.open(lock_file, "r")
+    if file then
+        file:close()
+        print("Aggiornamento già in corso da un'altra istanza. Attendere...")
+        return false
+    end
+
+    -- Creare un file di lock per indicare che l'aggiornamento è in corso
+    file = io.open(lock_file, "w")
+    file:write("Aggiornamento in corso")
+    file:close()
+
+    -- Scarica la nuova versione in un file temporaneo
+    local temp_file = "temp_" .. script_name
+    if download_file(update_url, temp_file) then
+        -- Sostituisce il file attuale con il nuovo
+        os.remove(script_name)
+        os.rename(temp_file, script_name)
+        
+        print("Aggiornamento completato. Riavvio...")
+        
+        -- Rimuove il file di lock
+        os.remove(lock_file)
+
+        -- Riavvia lo script aggiornato
+        os.execute("lua " .. script_name)
+        os.exit()
+    else
+        print("Nessun aggiornamento disponibile o errore nel download.")
+
+        -- Rimuove il file di lock in caso di errore
+        os.remove(lock_file)
+    end
+end
+
+-- Avvio dell'auto-updater
+check_for_updates()
+
+-- Codice principale del tuo script qui
+print("Esecuzione del codice principale...")
+
+
+-- Aggiungi qui il resto del codice del tuo script
 require("natives/natives")
 
 local MAXN_PLAYERS = 32
