@@ -1,40 +1,52 @@
 package.path = FileMgr.GetMenuRootPath() .. "\\Lua\\?.lua;"
-local script_name = "ChatAssistant.lua"
-local update_url = "https://github.com/ares-lp/test/blob/main/exampleTemp.lua"  -- URL dove si trova la nuova versione dello script
-local lock_file = "ChatAssistant.lock"
-print("test")
+local script_name = "exampleTemp.lua"
+local update_url = "https://raw.githubusercontent.com/ares-lp/test/main/exampleTemp.lua"  -- URL dove si trova la nuova versione dello script
+local lock_file = "exampleTemp.lock"
+
 -- Funzione per scaricare un file utilizzando Curl
-local function download_file(url, dest)
+function download_file(url, dest)
+    print("primissima")
     local curl = Curl.Easy()
+    --local file = io.open(FileMgr.GetMenuRootPath() .. "/" .. "Lua/" .. dest, "wb")
+
+    --if not file then
+    --    error("Impossibile aprire il file per la scrittura: " .. "/" .. "Lua/" .. dest)
+    --end
+
+    -- Imposta l'URL da cui scaricare il file
     curl:Setopt(eCurlOption.CURLOPT_URL, url)
-    
-    -- Apri il file di destinazione per la scrittura
-    local file = io.open(dest, "wb")
-    if not file then
-        error("Impossibile aprire il file per la scrittura: " .. dest)
-    end
-    
+
     -- Imposta la funzione di scrittura personalizzata per Curl
-    curl:Setopt(eCurlOption.CURLOPT_WRITEFUNCTION, function(data)
-        file:write(data)
-        return string.len(data)
-    end)
+    
 
     -- Esegui l'operazione di download
+    print("path prima prima ")
     curl:Perform()
-
+    print("path prima")
+    while not curl:GetFinished() do
+        Script.Yield(1)
+    end
+    print("path dopo")
     -- Verifica se il download è stato completato con successo
     local success, response = curl:GetResponse()
-    file:close()
+    if success == eCurlCode.CURLE_OK then
+        print("path dopo ancora")
+        
+        local path = FileMgr.GetMenuRootPath() .. "/" .. "Lua/" .. "exampleTemp.lua" 
+        --print("path ciao: ".. path)
+        FileMgr.WriteFileContent(path, response)
+        
+    end
+    --file:close()
 
     -- Restituisci true se il download è stato completato con successo
-    return success == eCurlCode.CURLE_OK
+    
 end
 
 -- Funzione per verificare se c'è un nuovo aggiornamento
-local function check_for_updates()
+function check_for_updates()
     -- Se il file di lock esiste, un aggiornamento è già in corso
-    local file = io.open(lock_file, "r")
+    local file = io.open(FileMgr.GetMenuRootPath() .. "/" .. "Lua/" .. lock_file, "r")
     if file then
         file:close()
         print("Aggiornamento già in corso da un'altra istanza. Attendere...")
@@ -42,28 +54,35 @@ local function check_for_updates()
     end
 
     -- Creare un file di lock per indicare che l'aggiornamento è in corso
-    file = io.open(lock_file, "w")
+    file = io.open(FileMgr.GetMenuRootPath() .. "/" .. "Lua/" .. lock_file, "w")
     file:write("Aggiornamento in corso")
     file:close()
 
     -- Scarica la nuova versione in un file temporaneo
     local temp_file = "temp_" .. script_name
-    if download_file(update_url, temp_file) then
+    Script.QueueJob(function ()
+        download_file(update_url, temp_file)
+    end)
+    print("dopo queue")
+    if 1 then
+        local path = FileMgr.GetMenuRootPath() .. "/" .. "Lua/" .. "exampleTemp2.lua" 
+      
         -- Sostituisce il file attuale con il nuovo
-        os.remove(script_name)
-        os.rename(temp_file, script_name)
+        --os.remove(FileMgr.GetMenuRootPath() .. "/" .. "Lua/" .. script_name)
+        --FileMgr.WriteFileContent(path, response)
+        --os.rename(FileMgr.GetMenuRootPath() .. "/" .. "Lua/" .. temp_file, FileMgr.GetMenuRootPath() .. "/" .. "Lua/" .. script_name)
         
         print("Aggiornamento completato. Riavvio...")
         
         -- Rimuove il file di lock
-        os.remove(lock_file)
+        os.remove(FileMgr.GetMenuRootPath() .. "/" .. "Lua/" .. lock_file)
 
         -- Riavvia lo script aggiornato
-        os.execute("lua " .. script_name)
-        os.exit()
+        --os.execute("lua " .. script_name)
+        --os.exit()
     else
         print("Nessun aggiornamento disponibile o errore nel download.")
-
+        
         -- Rimuove il file di lock in caso di errore
         os.remove(lock_file)
     end
@@ -74,6 +93,7 @@ check_for_updates()
 
 -- Codice principale del tuo script qui
 print("Esecuzione del codice principale...")
+
 
 
 -- Aggiungi qui il resto del codice del tuo script
