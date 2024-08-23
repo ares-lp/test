@@ -2,7 +2,7 @@ package.path = FileMgr.GetMenuRootPath() .. "\\Lua\\?.lua;"
 local script_name = "ChatAssistant.lua"
 local update_url = "https://github.com/ares-lp/test/blob/main/exampleTemp.lua"  -- URL dove si trova la nuova versione dello script
 local lock_file = "ChatAssistant.lock"
-
+print("test")
 -- Funzione per scaricare un file utilizzando Curl
 local function download_file(url, dest)
     local curl = Curl.Easy()
